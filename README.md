@@ -1,38 +1,111 @@
-Role Name
-=========
+# Ansible Role: redash
 
-A brief description of the role goes here.
+Деплой [Redash](https://redash.io/) в Docker Swarm (single-node или multi-node).
 
-Requirements
-------------
+## Что делает роль
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+1. Проверяет, что нода является **Swarm manager**
+2. (Опционально) логинится в приватный Docker registry
+3. Создаёт директории (`/var/redash`, postgres data dir)
+4. Рендерит `docker-compose.yml` из шаблона
+5. Деплоит стек через `docker stack deploy`
+6. Ждёт, пока сервис `redash` поднимется
+7. (Опционально) запускает `manage.py db upgrade` для первичной инициализации БД
 
-Role Variables
---------------
+## Сервисы в стеке
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+| Сервис      | Образ                                  | Описание                    |
+|-------------|----------------------------------------|-----------------------------|
+| `postgres`  | `postgres:12-alpine`                   | База данных                 |
+| `redis`     | `redis:3-alpine`                       | Очередь задач / кэш         |
+| `redash`    | `registry.unitpay.ru/unitpay/redash`   | Web-приложение              |
+| `worker`    | то же                                  | Celery worker               |
+| `scheduler` | то же                                  | Celery beat scheduler       |
 
-Dependencies
-------------
+## Переменные
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+### Обязательные (нужно переопределить)
 
-Example Playbook
-----------------
+| Переменная                  | Описание                                   |
+|-----------------------------|--------------------------------------------|
+| `redash_postgres_password`  | Пароль к PostgreSQL                        |
+| `redash_secret_key`         | SECRET_KEY для Redash (генерируется 1 раз) |
+| `redash_cookie_secret`      | COOKIE_SECRET для Redash                   |
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+### Основные
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+| Переменная                  | По умолчанию                                | Описание                          |
+|-----------------------------|---------------------------------------------|-----------------------------------|
+| `redash_image`              | `registry.unitpay.ru/unitpay/redash`        | Образ Redash                      |
+| `redash_version`            | `0.0.12`                                    | Тег образа                        |
+| `redash_stack_name`         | `redash`                                    | Имя Swarm-стека                   |
+| `redash_listen_port`        | `5000`                                      | Публичный порт web-приложения     |
+| `redash_postgres_data_dir`  | `/opt/redash/postgres`                      | Путь к данным PostgreSQL          |
+| `redash_compose_dir`        | `/opt/redash`                               | Директория для compose-файла      |
+| `redash_network_name`       | `redash`                                    | Имя overlay-сети                  |
 
-License
--------
+### Registry
 
-BSD
+| Переменная                  | По умолчанию  | Описание                               |
+|-----------------------------|---------------|----------------------------------------|
+| `redash_registry_auth`      | `false`       | Включить логин в registry              |
+| `redash_registry_url`       | `""`          | URL registry                           |
+| `redash_registry_username`  | `""`          | Логин                                  |
+| `redash_registry_password`  | `""`          | Пароль (хранить в vault!)              |
 
-Author Information
-------------------
+### Traefik
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+| Переменная               | По умолчанию | Описание                       |
+|--------------------------|--------------|--------------------------------|
+| `redash_traefik_enabled` | `false`      | Добавить labels для Traefik    |
+| `redash_traefik_host`    | `""`         | Hostname для Traefik router    |
+
+### Первичный деплой
+
+| Переменная        | По умолчанию | Описание                                            |
+|-------------------|--------------|-----------------------------------------------------|
+| `redash_db_init`  | `false`      | Запустить `manage.py db upgrade` (только 1-й раз)  |
+
+## Использование
+
+### Первый деплой
+
+```bash
+# Добавить секреты в vault
+ansible-vault edit inventory/prod/group_vars/redash/vault.yml
+
+# Задеплоить и инициализировать БД
+ansible-playbook playbooks/redash.yml -i inventory/prod -e redash_db_init=true
+```
+
+### Обновление версии
+
+```bash
+# Поменять redash_version в vars, затем:
+ansible-playbook playbooks/redash.yml -i inventory/prod
+```
+
+### Только пересоздать стек
+
+```bash
+ansible-playbook playbooks/redash.yml -i inventory/prod --tags deploy
+```
+
+## Структура файлов на сервере
+
+```
+/var/redash/
+├── docker-compose.yml     # рендерится Ansible
+└── postgres/              # данные PostgreSQL (bind mount)
+```
+
+## Vault-пример
+
+```yaml
+# inventory/prod/group_vars/redash/vault.yml
+vault_registry_username: "deployer"
+vault_registry_password: "s3cr3t"
+vault_postgres_password: "pg_s3cr3t"
+vault_redash_secret_key: "$(python -c 'import secrets; print(secrets.token_hex(32))')"
+vault_redash_cookie_secret: "$(python -c 'import secrets; print(secrets.token_hex(32))')"
+```
