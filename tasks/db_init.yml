@@ -1,0 +1,30 @@
+---
+# Runs 'manage db create_tables' inside the redash container.
+# Set redash_db_init: true only on the very first deploy.
+
+- name: Find running redash container id
+  ansible.builtin.command: >
+    docker ps
+    --filter name={{ redash_stack_name }}_redash
+    --filter status=running
+    --format '{{ "{{" }}.ID{{ "}}" }}'
+    --latest
+  register: _redash_container
+  changed_when: false
+
+- name: Fail if redash container not found
+  ansible.builtin.fail:
+    msg: "Could not find a running container for service '{{ redash_stack_name }}_redash'"
+  when: _redash_container.stdout == ""
+
+- name: Run database migrations / create tables
+  ansible.builtin.command: >
+    docker exec {{ _redash_container.stdout }}
+    /app/manage.py db upgrade
+  register: _db_init
+  changed_when: "'Running upgrade' in _db_init.stdout or 'Done' in _db_init.stdout"
+
+- name: Show db init output
+  ansible.builtin.debug:
+    msg: "{{ _db_init.stdout_lines }}"
+  when: _db_init.stdout_lines | length > 0

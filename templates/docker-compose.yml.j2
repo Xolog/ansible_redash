@@ -1,0 +1,167 @@
+---
+# Managed by Ansible — do not edit manually
+version: "3.8"
+
+networks:
+  {{ redash_network_name }}:
+    driver: overlay
+    attachable: true
+  traefik_public:
+    external: true
+
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: {{ redash_postgres_data_dir }}
+
+x-redash-env: &redash-env
+  PYTHONUNBUFFERED: "0"
+  REDASH_LOG_LEVEL: "INFO"
+  REDASH_REDIS_URL: "redis://redis:6379/0"
+  REDASH_DATABASE_URL: "postgresql://{{ redash_postgres_user }}:{{ redash_postgres_password }}@postgres/{{ redash_postgres_db }}"
+  REDASH_SECRET_KEY: "{{ redash_secret_key }}"
+  REDASH_COOKIE_SECRET: "{{ redash_cookie_secret }}"
+{% for key, value in redash_extra_env.items() %}
+  {{ key }}: "{{ value }}"
+{% endfor %}
+
+services:
+
+  postgres:
+    image: {{ redash_postgres_image }}:{{ redash_postgres_version }}
+    environment:
+      POSTGRES_DB: {{ redash_postgres_db }}
+      POSTGRES_USER: {{ redash_postgres_user }}
+      POSTGRES_PASSWORD: {{ redash_postgres_password }}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - {{ redash_network_name }}
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: {{ redash_log_driver }}
+      options:
+        max-size: {{ redash_log_max_size }}
+        max-file: "{{ redash_log_max_file }}"
+
+  redis:
+    image: {{ redash_redis_image }}:{{ redash_redis_version }}
+    networks:
+      - {{ redash_network_name }}
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 128M
+    logging:
+      driver: {{ redash_log_driver }}
+      options:
+        max-size: {{ redash_log_max_size }}
+        max-file: "{{ redash_log_max_file }}"
+
+  redash:
+    image: {{ redash_image }}:{{ redash_version }}
+    command: /app/bin/docker-entrypoint server
+    environment:
+      <<: *redash-env
+      REDASH_WEB_WORKERS: "{{ redash_workers }}"
+    ports:
+      - "{{ redash_listen_port }}:5000"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - {{ redash_network_name }}
+      - traefik_public
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 1G
+{% if redash_traefik_enabled | default(false) %}
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.redash.rule=Host(`{{ redash_traefik_host }}`)"
+        - "traefik.http.routers.redash.entrypoints=websecure"
+        - "traefik.http.routers.redash.tls=true"
+        - "traefik.http.services.redash.loadbalancer.server.port=5000"
+        - "traefik.docker.network=traefik_public"
+{% endif %}
+    logging:
+      driver: {{ redash_log_driver }}
+      options:
+        max-size: {{ redash_log_max_size }}
+        max-file: "{{ redash_log_max_file }}"
+
+  worker:
+    image: {{ redash_image }}:{{ redash_version }}
+    command: /app/bin/docker-entrypoint worker
+    environment:
+      <<: *redash-env
+      QUEUES: "queries,scheduled_queries,celery"
+      WORKERS_COUNT: "2"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - {{ redash_network_name }}
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 1G
+    logging:
+      driver: {{ redash_log_driver }}
+      options:
+        max-size: {{ redash_log_max_size }}
+        max-file: "{{ redash_log_max_file }}"
+
+  scheduler:
+    image: {{ redash_image }}:{{ redash_version }}
+    command: /app/bin/docker-entrypoint scheduler
+    environment:
+      <<: *redash-env
+      QUEUES: "scheduled_queries,schemas"
+      WORKERS_COUNT: "1"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - {{ redash_network_name }}
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: {{ redash_log_driver }}
+      options:
+        max-size: {{ redash_log_max_size }}
+        max-file: "{{ redash_log_max_file }}"

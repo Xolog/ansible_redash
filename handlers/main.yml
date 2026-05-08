@@ -1,0 +1,13 @@
+---
+- name: redeploy redash stack
+  ansible.builtin.command: >
+    docker stack deploy
+    --compose-file {{ redash_compose_file }}
+    --with-registry-auth
+    --prune
+    {{ redash_stack_name }}
+  changed_when: true
+
+- name: registry logout
+  ansible.builtin.command: docker logout {{ redash_registry_url }}
+  changed_when: true

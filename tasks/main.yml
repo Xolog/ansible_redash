@@ -1,0 +1,24 @@
+---
+- name: Include OS-specific variables
+  ansible.builtin.include_vars: "{{ ansible_os_family | lower }}.yml"
+  failed_when: false
+
+- name: Include prerequisites tasks
+  ansible.builtin.include_tasks: prerequisites.yml
+
+- name: Include registry login tasks
+  ansible.builtin.include_tasks: registry.yml
+  when: redash_registry_auth | bool
+
+- name: Include directories tasks
+  ansible.builtin.include_tasks: directories.yml
+
+- name: Include compose tasks
+  ansible.builtin.include_tasks: compose.yml
+
+- name: Include deploy tasks
+  ansible.builtin.include_tasks: deploy.yml
+
+- name: Include db init tasks
+  ansible.builtin.include_tasks: db_init.yml
+  when: redash_db_init | default(false) | bool

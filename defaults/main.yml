@@ -1,0 +1,46 @@
+---
+# Redash image
+redash_image: "redash/redash"
+redash_version: "26.3.0"
+
+# Postgres
+redash_postgres_image: "postgres"
+redash_postgres_version: "12-alpine"
+redash_postgres_db: "redash"
+redash_postgres_user: "redash"
+redash_postgres_password: "changeme"
+redash_postgres_data_dir: "/opt/redash/postgres"
+
+# Redis
+redash_redis_image: "redis"
+redash_redis_version: "3-alpine"
+
+# Redash app
+redash_secret_key: "changeme_secret_key"
+redash_listen_port: 5000
+redash_workers: 1
+redash_cookie_secret: "changeme_cookie_secret"
+
+# Network
+redash_network_name: "redash"
+
+# Docker registry
+redash_registry_auth: false
+redash_registry_url: "registry.ru"
+redash_registry_username: ""
+redash_registry_password: ""
+
+# Stack name
+redash_stack_name: "redash"
+
+# Compose file destination
+redash_compose_dir: "/var/redash"
+redash_compose_file: "{{ redash_compose_dir }}/docker-compose.yml"
+
+# Log driver
+redash_log_driver: "json-file"
+redash_log_max_size: "50m"
+redash_log_max_file: "3"
+
+# Extra env vars for redash app (merged with defaults)
+redash_extra_env: {}

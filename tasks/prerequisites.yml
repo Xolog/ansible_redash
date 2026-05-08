@@ -1,0 +1,26 @@
+---
+- name: Ensure Docker is installed
+  ansible.builtin.command: docker --version
+  register: _docker_check
+  changed_when: false
+  failed_when: _docker_check.rc != 0
+
+- name: Ensure node is a Swarm manager
+  ansible.builtin.command: docker info --format '{{ "{{" }}.Swarm.LocalNodeState{{ "}}" }}'
+  register: _swarm_state
+  changed_when: false
+
+- name: Fail if not a Swarm manager
+  ansible.builtin.fail:
+    msg: "This node is not a Docker Swarm manager (state: {{ _swarm_state.stdout }}). Run 'docker swarm init' first."
+  when: _swarm_state.stdout != "active"
+
+- name: Check Swarm manager role
+  ansible.builtin.command: docker info --format '{{ "{{" }}.Swarm.ControlAvailable{{ "}}" }}'
+  register: _swarm_manager
+  changed_when: false
+
+- name: Fail if not a manager node
+  ansible.builtin.fail:
+    msg: "This node is a Swarm worker, not a manager. Deploy must run on a manager node."
+  when: _swarm_manager.stdout != "true"

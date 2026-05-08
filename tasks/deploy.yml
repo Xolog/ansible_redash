@@ -1,0 +1,28 @@
+---
+- name: Check if stack already deployed
+  ansible.builtin.command: docker stack ls --format '{{ "{{" }}.Name{{ "}}" }}'
+  register: _stacks
+  changed_when: false
+
+- name: Deploy redash stack
+  ansible.builtin.command: >
+    docker stack deploy
+    --compose-file {{ redash_compose_file }}
+    --with-registry-auth
+    --prune
+    {{ redash_stack_name }}
+  register: _stack_deploy
+  changed_when: "'Updating' in _stack_deploy.stdout or 'Creating' in _stack_deploy.stdout"
+  when: redash_stack_name not in _stacks.stdout_lines or _compose_changed is changed
+
+- name: Wait for redash service to be running
+  ansible.builtin.command: >
+    docker service ls
+    --filter name={{ redash_stack_name }}_redash
+    --format '{{ "{{" }}.Replicas{{ "}}" }}'
+  register: _replicas
+  retries: 20
+  delay: 10
+  until: _replicas.stdout is search("1/1")
+  changed_when: false
+  when: _stack_deploy is changed or redash_stack_name not in _stacks.stdout_lines

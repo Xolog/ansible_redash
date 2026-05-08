@@ -1,0 +1,12 @@
+---
+- name: Log in to private Docker registry
+  ansible.builtin.command: >
+    docker login
+    --username {{ redash_registry_username }}
+    --password-stdin
+    {{ redash_registry_url }}
+  args:
+    stdin: "{{ redash_registry_password }}"
+  no_log: true
+  changed_when: true
+  notify: registry logout
