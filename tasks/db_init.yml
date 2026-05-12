@@ -17,7 +17,12 @@
     msg: "Could not find a running container for service '{{ redash_stack_name }}_redash'"
   when: _redash_container.stdout == ""
 
-- name: Run database migrations / create tables
+- name: Create database tables (first deploy only)
+  ansible.builtin.command: >
+    docker exec {{ _redash_container.stdout }}
+    /app/manage.py database create_tables
+
+- name: Run database migrations
   ansible.builtin.command: >
     docker exec {{ _redash_container.stdout }}
     /app/manage.py db upgrade

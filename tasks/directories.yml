@@ -11,6 +11,6 @@
   ansible.builtin.file:
     path: "{{ redash_postgres_data_dir }}"
     state: directory
-    owner: "999"   # postgres uid in alpine image
-    group: "999"
+    owner: "70"   # postgres uid in alpine image
+    group: "70"
     mode: "0700"
