@@ -18,7 +18,7 @@
 - name: Wait for redash service to be running
   ansible.builtin.command: >
     docker service ls
-    --filter name={{ redash_stack_name }}_redash
+    --filter name={{ redash_stack_name }}_server
     --format '{{ "{{" }}.Replicas{{ "}}" }}'
   register: _replicas
   retries: 20

@@ -55,12 +55,12 @@ services:
         delay: 5s
         max_attempts: 3
 
-  redash:
+  server:
     image: {{ redash_image }}:{{ redash_version }}
     command: /app/bin/docker-entrypoint server
     environment:
       <<: *redash-env
-      REDASH_WEB_WORKERS: "{{ redash_workers }}"
+      REDASH_WEB_WORKERS: "{{ redash_server_workers }}"
     ports:
       - "{{ redash_listen_port }}:5000"
     depends_on:
@@ -74,9 +74,6 @@ services:
         condition: on-failure
         delay: 5s
         max_attempts: 3
-      resources:
-        limits:
-          memory: 1G
 {% if redash_traefik_enabled | default(false) %}
       labels:
         - "traefik.enable=true"
@@ -87,36 +84,13 @@ services:
         - "traefik.docker.network=traefik_public"
 {% endif %}
 
-  worker:
-    image: {{ redash_image }}:{{ redash_version }}
-    command: /app/bin/docker-entrypoint worker
-    environment:
-      <<: *redash-env
-      QUEUES: "queries,scheduled_queries,celery"
-      WORKERS_COUNT: "2"
-    depends_on:
-      - postgres
-      - redis
-    networks:
-      - {{ redash_network_name }}
-    deploy:
-      mode: global
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-      resources:
-        limits:
-          memory: 1G
-
   scheduler:
     image: {{ redash_image }}:{{ redash_version }}
     command: /app/bin/docker-entrypoint scheduler
     environment:
       <<: *redash-env
-      QUEUES: "scheduled_queries,schemas"
-      WORKERS_COUNT: "1"
     depends_on:
+      - server
       - postgres
       - redis
     networks:
@@ -127,6 +101,64 @@ services:
         condition: on-failure
         delay: 5s
         max_attempts: 3
-      resources:
-        limits:
-          memory: 512M
+
+  scheduled_worker:
+    image: {{ redash_image }}:{{ redash_version }}
+    command: /app/bin/docker-entrypoint worker
+    depends_on:
+      - server
+      - postgres
+      - redis
+    environment:
+      <<: *redash-env
+      QUEUES: "scheduled_queries,schemas"
+      WORKERS_COUNT: {{ redash_sheduler_workers }}
+    networks:
+      - {{ redash_network_name }}
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  adhoc_worker:
+    image: {{ redash_image }}:{{ redash_version }}
+    command: /app/bin/docker-entrypoint worker
+    depends_on:
+      - server
+      - postgres
+      - redis
+    environment:
+      <<: *redash-env
+      QUEUES: "queries"
+      WORKERS_COUNT: {{ redash_adhoc_workers }}
+    networks:
+      - {{ redash_network_name }}
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+
+  worker:
+    image: {{ redash_image }}:{{ redash_version }}
+    command: /app/bin/docker-entrypoint worker
+    environment:
+      <<: *redash-env
+      QUEUES: "periodic,celery,emails,default"
+      WORKERS_COUNT: {{ redash_default_workers }}
+    depends_on:
+      - postgres
+      - redis
+      - server
+    networks:
+      - {{ redash_network_name }}
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3

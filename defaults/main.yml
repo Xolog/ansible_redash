@@ -18,7 +18,10 @@ redash_redis_version: "3-alpine"
 # Redash app
 redash_secret_key: "changeme_secret_key"
 redash_listen_port: 5000
-redash_workers: 1
+redash_server_workers: 4
+redash_sheduler_workers: 1
+redash_adhoc_workers: 2
+redash_default_workers: 2
 redash_cookie_secret: "changeme_cookie_secret"
 
 # Network
