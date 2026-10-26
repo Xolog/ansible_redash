@@ -1,11 +1,11 @@
 ---
 # Redash image
 redash_image: "redash/redash"
-redash_version: "26.3.0"
+redash_version: "26.9.0"
 
 # Postgres
 redash_postgres_image: "postgres"
-redash_postgres_version: "12-alpine"
+redash_postgres_version: "17-alpine"
 redash_postgres_db: "redash"
 redash_postgres_user: "redash"
 redash_postgres_password: "changeme"
@@ -13,7 +13,7 @@ redash_postgres_data_dir: "/opt/redash/postgres"
 
 # Redis
 redash_redis_image: "redis"
-redash_redis_version: "3-alpine"
+redash_redis_version: "7-alpine"
 
 # Redash app
 redash_secret_key: "changeme_secret_key"

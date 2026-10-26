@@ -25,6 +25,14 @@ x-redash-env: &redash-env
   {{ key }}: "{{ value }}"
 {% endfor %}
 
+x-redash-logging: &redash-logging
+  driver: "{{ redash_log_driver }}"
+{% if redash_log_driver in ['json-file', 'local'] %}
+  options:
+    max-size: "{{ redash_log_max_size }}"
+    max-file: "{{ redash_log_max_file }}"
+{% endif %}
+
 services:
 
   postgres:
@@ -37,6 +45,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - {{ redash_network_name }}
+    logging: *redash-logging
     deploy:
       mode: global
       restart_policy:
@@ -48,6 +57,7 @@ services:
     image: {{ redash_redis_image }}:{{ redash_redis_version }}
     networks:
       - {{ redash_network_name }}
+    logging: *redash-logging
     deploy:
       mode: global
       restart_policy:
@@ -68,6 +78,7 @@ services:
       - redis
     networks:
       - {{ redash_network_name }}
+    logging: *redash-logging
     deploy:
       mode: global
       restart_policy:
@@ -95,6 +106,7 @@ services:
       - redis
     networks:
       - {{ redash_network_name }}
+    logging: *redash-logging
     deploy:
       mode: global
       restart_policy:
@@ -115,6 +127,7 @@ services:
       WORKERS_COUNT: {{ redash_sheduler_workers }}
     networks:
       - {{ redash_network_name }}
+    logging: *redash-logging
     deploy:
       mode: global
       restart_policy:
@@ -135,6 +148,7 @@ services:
       WORKERS_COUNT: {{ redash_adhoc_workers }}
     networks:
       - {{ redash_network_name }}
+    logging: *redash-logging
     deploy:
       mode: global
       restart_policy:
@@ -156,6 +170,7 @@ services:
       - server
     networks:
       - {{ redash_network_name }}
+    logging: *redash-logging
     deploy:
       mode: global
       restart_policy:

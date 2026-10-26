@@ -5,7 +5,7 @@
 - name: Find running redash container id
   ansible.builtin.command: >
     docker ps
-    --filter name={{ redash_stack_name }}_redash
+    --filter name={{ redash_stack_name }}_server
     --filter status=running
     --format '{{ "{{" }}.ID{{ "}}" }}'
     --latest
@@ -14,7 +14,7 @@
 
 - name: Fail if redash container not found
   ansible.builtin.fail:
-    msg: "Could not find a running container for service '{{ redash_stack_name }}_redash'"
+    msg: "Could not find a running container for service '{{ redash_stack_name }}_server'"
   when: _redash_container.stdout == ""
 
 - name: Create database tables (first deploy only)
