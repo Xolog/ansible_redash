@@ -22,3 +22,9 @@
 - name: Include db init tasks
   ansible.builtin.include_tasks: db_init.yml
   when: redash_db_init | default(false) | bool
+
+- name: Include db migrate tasks
+  ansible.builtin.include_tasks: db_migrate.yml
+  when:
+    - redash_db_migrate | default(false) | bool
+    - not (redash_db_init | default(false) | bool)

@@ -1,0 +1,26 @@
+---
+- name: Find running redash server container id
+  ansible.builtin.command: >
+    docker ps
+    --filter name={{ redash_stack_name }}_server
+    --filter status=running
+    --format '{{ "{{" }}.ID{{ "}}" }}'
+    --latest
+  register: _redash_server_container
+  changed_when: false
+
+- name: Fail if redash server container not found
+  ansible.builtin.fail:
+    msg: "Could not find a running container for service '{{ redash_stack_name }}_server'"
+  when: _redash_server_container.stdout == ""
+
+- name: Run database migrations
+  ansible.builtin.command: >
+    docker exec {{ _redash_server_container.stdout }}
+    /app/manage.py db upgrade
+  register: _db_migrate
+  changed_when: "'Running upgrade' in (_db_migrate.stdout + _db_migrate.stderr)"
+
+- name: Show db migrate output
+  ansible.builtin.debug:
+    msg: "{{ _db_migrate.stdout_lines + _db_migrate.stderr_lines }}"
