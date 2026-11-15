@@ -33,6 +33,13 @@ x-redash-logging: &redash-logging
     max-file: "{{ redash_log_max_file }}"
 {% endif %}
 
+x-redash-restart: &redash-restart
+  condition: {{ redash_restart_condition }}
+  delay: {{ redash_restart_delay }}
+{% if redash_restart_max_attempts | int > 0 %}
+  max_attempts: {{ redash_restart_max_attempts }}
+{% endif %}
+
 services:
 
   postgres:
@@ -48,10 +55,7 @@ services:
     logging: *redash-logging
     deploy:
       mode: global
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
+      restart_policy: *redash-restart
 
   redis:
     image: {{ redash_redis_image }}:{{ redash_redis_version }}
@@ -60,10 +64,7 @@ services:
     logging: *redash-logging
     deploy:
       mode: global
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
+      restart_policy: *redash-restart
 
   server:
     image: {{ redash_image }}:{{ redash_version }}
@@ -81,10 +82,7 @@ services:
     logging: *redash-logging
     deploy:
       mode: global
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
+      restart_policy: *redash-restart
 {% if redash_traefik_enabled | default(false) %}
       labels:
         - "traefik.enable=true"
@@ -109,10 +107,7 @@ services:
     logging: *redash-logging
     deploy:
       mode: global
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
+      restart_policy: *redash-restart
 
   scheduled_worker:
     image: {{ redash_image }}:{{ redash_version }}
@@ -130,10 +125,7 @@ services:
     logging: *redash-logging
     deploy:
       mode: global
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
+      restart_policy: *redash-restart
 
   adhoc_worker:
     image: {{ redash_image }}:{{ redash_version }}
@@ -151,10 +143,7 @@ services:
     logging: *redash-logging
     deploy:
       mode: global
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
+      restart_policy: *redash-restart
 
 
   worker:
@@ -173,7 +162,4 @@ services:
     logging: *redash-logging
     deploy:
       mode: global
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
+      restart_policy: *redash-restart
