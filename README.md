@@ -59,6 +59,14 @@
 
 Для остальных драйверов (например, `fluentd`) роль задаёт только имя драйвера. Опции (`fluentd-address`, `tag`) Docker берёт из `log-opts` в `daemon.json`, если там тот же драйвер.
 
+### Перезапуск
+
+| Переменная                    | По умолчанию  | Описание                                                                 |
+|-------------------------------|---------------|--------------------------------------------------------------------------|
+| `redash_restart_condition`    | `on-failure`  | `restart_policy.condition` всех сервисов. `any` перезапускает и задачи, вышедшие с кодом 0: postgres так выходит по SIGTERM при рестарте dockerd |
+| `redash_restart_delay`        | `5s`          | `restart_policy.delay`                                                   |
+| `redash_restart_max_attempts` | `3`           | `restart_policy.max_attempts`; `0` — без ограничения                     |
+
 ### Registry
 
 | Переменная                  | По умолчанию  | Описание                               |

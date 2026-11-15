@@ -45,5 +45,11 @@ redash_log_driver: "json-file"
 redash_log_max_size: "50m"
 redash_log_max_file: "3"
 
+# Swarm restart policy of all services. "any" restarts tasks that exited with code 0 too
+# (postgres exits 0 on SIGTERM); max_attempts 0 = no limit
+redash_restart_condition: "on-failure"
+redash_restart_delay: "5s"
+redash_restart_max_attempts: 3
+
 # Extra env vars for redash app (merged with defaults)
 redash_extra_env: {}
